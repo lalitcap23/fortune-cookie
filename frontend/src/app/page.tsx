@@ -13,6 +13,12 @@ const Home = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [fortuneAccount, setFortuneAccount] = useState<PublicKey | null>(null);
 
+  // Add debug logs
+  useEffect(() => {
+    console.log('Wallet public key:', publicKey?.toString());
+    console.log('Program instance:', program);
+  }, [publicKey, program]);
+
   // Find the PDA for the user's fortune account
   const findFortuneAccount = async () => {
     if (!publicKey || !program) return null;

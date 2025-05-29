@@ -3,6 +3,7 @@ import { Program, AnchorProvider, web3 } from '@project-serum/anchor';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useMemo } from 'react';
 import idl from '../Anchor/idl.json';
+
 import { PROGRAM_ID } from '../Anchor/programId';
 
 export const useFortuneProgram = (): Program | null => {
