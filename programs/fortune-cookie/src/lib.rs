@@ -32,7 +32,7 @@ pub mod fortune_realms {
            "🕵️‍♂️ Seek the truth. It's probably in the logs.",
            "🎨 Creativity is your superpower. Debugging is your battlefield .",
             "📚 Knowledge is the key to success. Also, read the README next time."
-
+            
 
         ];
 
