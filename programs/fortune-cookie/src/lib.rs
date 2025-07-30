@@ -79,7 +79,6 @@ pub struct CrackCookie<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
 }
-// pda is done 
 #[account]
 pub struct FortuneAccount {
     pub user: Pubkey,

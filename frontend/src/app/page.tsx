@@ -7,17 +7,25 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { PublicKey, SystemProgram } from '@solana/web3.js';
 
 const Home = () => {
-  const { publicKey } = useWallet();
+  const { publicKey, connected } = useWallet();
   const program = useFortuneProgram();
   const [fortune, setFortune] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [fortuneAccount, setFortuneAccount] = useState<PublicKey | null>(null);
+  const [accountExists, setAccountExists] = useState(false);
+  const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
-  // Add debug logs
+  // Clear messages after 5 seconds
   useEffect(() => {
-    console.log('Wallet public key:', publicKey?.toString());
-    console.log('Program instance:', program);
-  }, [publicKey, program]);
+    if (error || successMessage) {
+      const timer = setTimeout(() => {
+        setError('');
+        setSuccessMessage('');
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, successMessage]);
 
   // Find the PDA for the user's fortune account
   const findFortuneAccount = async () => {
@@ -35,32 +43,81 @@ const Home = () => {
     const checkAccount = async () => {
       if (!publicKey || !program) return;
       
-      const account = await findFortuneAccount();
-      if (!account) return;
-
       try {
-        const accountInfo = await program.account.fortuneAccount.fetch(account);
+        const account = await findFortuneAccount();
+        if (!account) return;
+
         setFortuneAccount(account);
-        if (accountInfo.fortune !== "No fortune yet.") {
-          setFortune(String(accountInfo.fortune));
+        
+        try {
+          const accountInfo = await program.account.fortuneAccount.fetch(account);
+          setAccountExists(true);
+          if (accountInfo.fortune && accountInfo.fortune !== "No fortune yet.") {
+            setFortune(String(accountInfo.fortune));
+          }
+        } catch (e) {
+          setAccountExists(false);
+          console.log('Account not initialized yet');
         }
-      } catch (e) {
-        console.log('Account not initialized yet');
-        setFortuneAccount(account);
+      } catch (error) {
+        console.error('Error checking account:', error);
       }
     };
 
     checkAccount();
   }, [publicKey, program]);
 
-  const crackCookie = async () => {
+  const initializeAccount = async () => {
     if (!program || !publicKey || !fortuneAccount) {
-      alert('Wallet not connected or program not initialized');
+      setError('Please connect your wallet first');
       return;
     }
 
     try {
       setIsLoading(true);
+      setError('');
+      
+      console.log('Initializing fortune account...');
+      const tx = await program.methods
+        .initialize()
+        .accounts({
+          fortuneAccount: fortuneAccount,
+          user: publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+      
+      setSuccessMessage('Account initialized successfully!');
+      setAccountExists(true);
+      setFortune("No fortune yet.");
+      
+      console.log('Initialization transaction:', tx);
+      
+    } catch (error) {
+      console.error('Initialization error:', error);
+      setError('Failed to initialize account: ' + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const crackCookie = async () => {
+    if (!program || !publicKey || !fortuneAccount) {
+      setError('Please connect your wallet first');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError('');
+      
+      // Check if account exists, if not initialize it first
+      if (!accountExists) {
+        await initializeAccount();
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for confirmation
+      }
+
+      console.log('Cracking fortune cookie...');
       const tx = await program.methods
         .crackCookie()
         .accounts({
@@ -69,41 +126,19 @@ const Home = () => {
         })
         .rpc();
       
+      console.log('Crack cookie transaction:', tx);
+      
+      // Wait for confirmation
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
       // Fetch the updated fortune
       const accountInfo = await program.account.fortuneAccount.fetch(fortuneAccount);
       setFortune(String(accountInfo.fortune));
+      setSuccessMessage('New fortune received! 🎉');
+      
     } catch (error) {
-      console.error('Error:', error);
-      if (error instanceof Error && error.message.includes('Account does not exist')) {
-        // If account doesn't exist, try to initialize it
-        try {
-          const tx = await program.methods
-            .initialize()
-            .accounts({
-              fortuneAccount: fortuneAccount,
-              user: publicKey,
-              systemProgram: SystemProgram.programId,
-            })
-            .rpc();
-          
-          // After initialization, try cracking the cookie again
-          const crackTx = await program.methods
-            .crackCookie()
-            .accounts({
-              fortuneAccount: fortuneAccount,
-              user: publicKey,
-            })
-            .rpc();
-          
-          const accountInfo = await program.account.fortuneAccount.fetch(fortuneAccount);
-          setFortune(String(accountInfo.fortune));
-        } catch (initError) {
-          console.error('Initialization error:', initError);
-          setFortune('❌ Error initializing account: ' + (initError instanceof Error ? initError.message : String(initError)));
-        }
-      } else {
-        setFortune('❌ Error cracking fortune: ' + (error instanceof Error ? error.message : String(error)));
-      }
+      console.error('Error cracking cookie:', error);
+      setError('Failed to crack fortune cookie: ' + (error instanceof Error ? error.message : String(error)));
     } finally {
       setIsLoading(false);
     }

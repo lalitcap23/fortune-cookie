@@ -3,13 +3,15 @@ import { Program, AnchorProvider, web3 } from '@project-serum/anchor';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useMemo } from 'react';
 import idl from '../Anchor/idl.json';
-
 import { PROGRAM_ID } from '../Anchor/programId';
 
 export const useFortuneProgram = (): Program | null => {
   const wallet = useWallet();
 
-  const connection = new web3.Connection('https://api.devnet.solana.com');
+  const connection = useMemo(() => new web3.Connection(
+    'https://api.devnet.solana.com',
+    'confirmed'
+  ), []);
 
   const provider = useMemo(() => {
     if (!wallet || !wallet.publicKey) return null;
@@ -25,7 +27,8 @@ export const useFortuneProgram = (): Program | null => {
     if (!anchorWallet) return null;
 
     return new AnchorProvider(connection, anchorWallet, {
-      preflightCommitment: 'processed',
+      preflightCommitment: 'confirmed',
+      commitment: 'confirmed',
     });
   }, [wallet, connection]);
 
